@@ -192,12 +192,13 @@ public class AppointmentsService : IAppointmentsService
             checkCommand.Parameters.AddWithValue("@IdAppointment", id);
 
             var s = await checkCommand.ExecuteScalarAsync(ct);
-            var status = Convert.ToString(s);
 
-            if (status == null)
+            if (s == null)
             {
                 return false;
             }
+            
+            var status = Convert.ToString(s);
 
             if (status == "Completed")
             {
@@ -301,12 +302,13 @@ public class AppointmentsService : IAppointmentsService
             checkCommand.Parameters.AddWithValue("@IdAppointment", id);
 
             var s = await checkCommand.ExecuteScalarAsync(ct);
-            var status = Convert.ToString(s);
 
-            if (status == null)
+            if (s == null)
             {
                 return false;
             }
+            
+            var status = Convert.ToString(s);
 
             if (status == "Completed")
             {

@@ -18,14 +18,18 @@ public class AppointmentsController : ControllerBase
     // GET /api/appointments
     // GET /api/appointments?status=Scheduled&patientLastName=Kowalska
     [HttpGet]
-    public async Task<IActionResult> Get(
-        [FromQuery] string? status,
-        [FromQuery] string? patientLastName
-    )
+    public async Task<IActionResult> Get([FromQuery] string? status, [FromQuery] string? patientLastName, CancellationToken ct)
     {
-        // TODO
+        var appointments = await _appointmentsService.GetAllAppointmentsAsync(status, patientLastName, ct);
 
-        var appointments = await _appointmentsService.GetAllAppointmentsAsync();
+        if (!appointments.Any())
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = "Brak wizyty o podanych danych"
+            };
+            return NotFound(error);
+        }
 
         return Ok(appointments);
     }
@@ -33,39 +37,163 @@ public class AppointmentsController : ControllerBase
     // GET /api/appointments/{idAppointment}
     [Route("{idAppointment:int}")]
     [HttpGet]
-    public async Task<IActionResult> GetById(int idAppointment)
+    public async Task<IActionResult> GetById(int idAppointment, CancellationToken ct)
     {
-        // TODO
+        var appointment = await _appointmentsService.GetAppointmentByIdAsync(idAppointment, ct);
 
-        return Ok();
+        if (appointment == null)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = "Brak wizyty o podanym ID"
+            };
+            return NotFound(error);
+        }
+
+        return Ok(appointment);
     }
 
     // POST /api/appointments
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] CreateAppointmentRequestDto appointmentRequest)
+    public async Task<IActionResult> Post([FromBody] CreateAppointmentRequestDto appointmentRequest, CancellationToken ct)
     {
-        // TODO
+        if (appointmentRequest.AppointmentDate < DateTime.Now)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = "Termin wizyty nie może być w przeszłości"
+            };
+            return BadRequest(error);
+        }
 
-        return CreatedAtAction("", null);
+        try
+        {
+            int appointmentId = await _appointmentsService.CreateAppointmentAsync(appointmentRequest, ct);
+
+            return CreatedAtAction(nameof(GetById), new { idAppointment = appointmentId }, new { idAppointment = appointmentId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return Conflict(error);
+        }
+        catch (ArgumentException ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return BadRequest(error);
+        }
+        catch (Exception ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return BadRequest(error);
+        }
     }
 
     // PUT /api/appointments/{idAppointment}
     [Route("{idAppointment:int}")]
     [HttpPut]
-    public async Task<IActionResult> Put(int idAppointment, [FromBody] UpdateAppointmentRequestDto appointmentRequest)
+    public async Task<IActionResult> Put(int idAppointment, [FromBody] UpdateAppointmentRequestDto appointmentRequest, CancellationToken ct)
     {
-        // TODO
+        if (appointmentRequest.AppointmentDate < DateTime.Now)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = "Termin wizyty nie może być w przeszłości"
+            };
+            return BadRequest(error);
+        }
 
-        return Ok();
+        try
+        {
+            bool isUpdated = await _appointmentsService.UpdateAppointmentAsync(idAppointment, appointmentRequest, ct);
+
+            if (!isUpdated)
+            {
+                var error = new ErrorResponseDto
+                {
+                    Message = "Brak wizyty o podanym ID"
+                };
+                return NotFound(error);
+            }
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+            return Conflict(error);
+        }
+        catch (ArgumentException ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+            return BadRequest(error);
+        }
+        catch (Exception ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return BadRequest(error);
+        }
     }
 
     // DELETE /api/appointments/{idAppointment}
     [Route("{idAppointment:int}")]
     [HttpDelete]
-    public async Task<IActionResult> Delete(int idAppointment)
+    public async Task<IActionResult> Delete(int idAppointment, CancellationToken ct)
     {
-        // TODO
+        try
+        {
+            bool isDeleted = await _appointmentsService.DeleteAppointmentAsync(idAppointment, ct);
 
-        return NoContent();
+            if (!isDeleted)
+            {
+                var error = new ErrorResponseDto
+                {
+                    Message = "Nie znaleziono wizyty o podanym ID"
+                };
+                return NotFound(error);
+            }
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return Conflict(error);
+        }
+        catch (Exception ex)
+        {
+            var error = new ErrorResponseDto
+            {
+                Message = ex.Message
+            };
+
+            return BadRequest(error);
+        }
     }
 }
